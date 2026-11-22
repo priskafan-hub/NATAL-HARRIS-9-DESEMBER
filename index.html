@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scanner Natal FGBMFI 2026</title>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<style>
+body {
+  font-family: Arial;
+  text-align: center;
+  padding: 15px;
+  background: #f4f4f4;
+}
+h2 { color: #174b35; }
+#reader {
+  width: 100%;
+  max-width: 450px;
+  margin: auto;
+}
+#hasil {
+  margin: 20px auto;
+  padding: 15px;
+  background: white;
+  border-radius: 10px;
+  max-width: 450px;
+}
+button {
+  padding: 12px 22px;
+  background: #174b35;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+<h2>SCANNER CHECK-IN</h2>
+<h3>NATAL FGBMFI 2026</h3>
+
+<div id="reader"></div>
+<div id="hasil">Arahkan kamera ke QR Code peserta</div>
+
+<script>
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzed9XfgXWZAD2kHFzYXsPKxvoHip18ohdKE9IXZTFwoT0EUgnV_BJsCHkM3XyE6FOQ/exec";
+
+let scanner;
+let sedangProses = false;
+
+function ambilID(teks) {
+  const cocok = teks.match(/NT26-\d+/i);
+  return cocok ? cocok[0].toUpperCase() : teks.trim();
+}
+
+function mulaiScanner() {
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+
+    function(teks) {
+      if (sedangProses) return;
+      sedangProses = true;
+
+      scanner.stop().then(() => {
+        prosesCheckin(ambilID(teks));
+      });
+    }
+  ).catch(err => {
+    document.getElementById("hasil").innerHTML =
+      "Kamera tidak dapat dibuka: " + err;
+  });
+}
+
+function prosesCheckin(id) {
+  document.getElementById("hasil").innerHTML =
+    "Memproses peserta " + id + "...";
+
+  const callback = "hasilCheckin";
+
+  window[callback] = function(data) {
+    document.getElementById("hasil").innerHTML =
+      data.success
+      ? "<h2>CHECK-IN BERHASIL</h2><h3>" + id + "</h3>" + data.message
+      : "<h3>CHECK-IN GAGAL</h3>" + data.message;
+
+    setTimeout(() => {
+      delete window[callback];
+      document.getElementById("hasil").innerHTML =
+        "Siap scan peserta berikutnya";
+      sedangProses = false;
+      mulaiScanner();
+    }, 3000);
+  };
+
+  const script = document.createElement("script");
+  script.src = GAS_URL +
+    "?action=checkin&id=" + encodeURIComponent(id) +
+    "&callback=" + callback;
+
+  document.body.appendChild(script);
+}
+</script>
+</body>
+</html>
